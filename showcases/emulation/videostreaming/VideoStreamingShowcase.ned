@@ -3,12 +3,15 @@
 package inet.showcases.emulation.videostreaming;
 
 import inet.networklayer.configurator.ipv4.Ipv4NetworkConfigurator;
+import inet.node.emulation.ExtHost;
 import inet.node.ethernet.Eth100G;
 import inet.node.ethernet.Eth100M;
+import inet.node.ethernet.Eth1G;
 import inet.node.ethernet.EtherSwitch;
 import inet.node.inet.Router;
 import inet.node.inet.StandardHost;
 import inet.visualizer.integrated.IntegratedVisualizer;
+
 
 network VideoStreamingShowcase
 {
@@ -207,10 +210,10 @@ network VideoStreamingExtHost
         router: Router {
             @display("p=194,217");
         }
-        extHost1: StandardHost {
+        extHost1: ExtHost {
             @display("p=45,217;i=,white,100");
         }
-        extHost2: StandardHost {
+        extHost2: ExtHost {
             @display("p=357,217;i=,white,100");
         }
     connections:
