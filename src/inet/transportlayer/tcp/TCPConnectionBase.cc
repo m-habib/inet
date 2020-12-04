@@ -128,7 +128,10 @@ TCPStateVariables::TCPStateVariables()
     ecnWillingness = false;
     sndAck = false;
     rexmit = false;
-    eceReactionTime = 0;          
+    eceReactionTime = 0;
+
+    dctcpCe = false;
+    dctcpEnabled = false;
 }
 
 std::string TCPStateVariables::str() const

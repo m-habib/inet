@@ -277,6 +277,9 @@ class INET_API TCPStateVariables : public cObject
     bool rexmit;               // set if retransmitting data, used to send not-ECT codepoint (rfc3168, p. 20)
     simtime_t eceReactionTime; // records the time of the last ECE reaction
 
+    //DCTCP
+    bool dctcpEnabled;        // set if this dctcp is enabled in this connection
+    bool dctcpCe;             // dctcp state variable (rfc8257, p. 6)
 };
 
 /**

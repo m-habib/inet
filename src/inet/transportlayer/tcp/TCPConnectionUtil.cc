@@ -382,6 +382,7 @@ void TCPConnection::configureStateVariables()
     state->ws_support = tcpMain->par("windowScalingSupport");    // if set, this means that current host supports WS (RFC 1323)
     state->ws_manual_scale = tcpMain->par("windowScalingFactor"); // scaling factor (set manually) to help for TCP validation
     state->ecnWillingness = tcpMain->par("ecnWillingness"); // if set, current host is willing to use ECN
+    state->dctcpEnabled = tcpMain->par("dctcpEnabled");     // if set, current host has DCTCP enabled (ecnWillingness should be set too)
     if (!state->ws_support && (advertisedWindowPar > TCP_MAX_WIN || advertisedWindowPar <= 0))
         throw cRuntimeError("Invalid advertisedWindow parameter: %ld", advertisedWindowPar);
 
@@ -619,6 +620,7 @@ void TCPConnection::sendAck()
     tcpseg->setAckNo(state->rcv_nxt);
     tcpseg->setWindow(updateRcvWnd());
 
+    // ECN:
     // rfc-3168, pages 19-20:
     // When TCP receives a CE data packet at the destination end-system, the
     // TCP data receiver sets the ECN-Echo flag in the TCP header of the
@@ -630,8 +632,39 @@ void TCPConnection::sendAck()
     // data packets) until it receives a CWR packet (a packet with the CWR
     // flag set).  After the receipt of the CWR packet, acknowledgments for
     // subsequent non-CE data packets do not have the ECN-Echo flag set.
+    //
+    // DCTCP:
+    // rfc-8257, pages 5-6:
+    // When receiving packets, the CE codepoint MUST be processed as follows:
+    //   1.  If the CE codepoint is set and DCTCP.CE is false, set DCTCP.CE to
+    //       true and send an immediate ACK.
+    //   2.  If the CE codepoint is not set and DCTCP.CE is true, set DCTCP.CE
+    //       to false and send an immediate ACK.
+    //   3.  Otherwise, ignore the CE codepoint.
     TCPStateVariables* state = getState();
-    if (state && state->ect) {
+    if (state && state->ect && state->dctcpEnabled) {
+        // DCTCP
+        // Process CE codepoint
+        EV_INFO << "DCTCP is enabled, process CE codepoint\n";
+        if (state->gotCeIndication && !state->dctcpCe) {
+            EV_INFO << "CE is set and DCTCP.CE is false. Set DCTCP.CE to true\n";
+            state->dctcpCe = true;
+        } else if (!state->gotCeIndication && state->dctcpCe) {
+            EV_INFO << "CE is not set and DCTCP.CE is true. Set DCTCP.CE to false\n";
+            state->dctcpCe = false;
+        }
+
+        // Check DCTCP.CE and set ECE accordingly
+        if (state->dctcpCe) {
+            EV_INFO << "DCTCP.CE is set, send ACK with ECE bit set\n";
+            tcpseg->setEceBit(true);
+        } else {
+            EV_INFO << "DCTCP.CE is not set, send ACK with ECE bit not set\n";
+            tcpseg->setEceBit(false);
+        }
+    }
+    else if (state && state->ect) {
+        // ECN
         if (state->gotCeIndication) {
             EV_INFO << "Received CE... ";
             if (state->ecnEchoState)
