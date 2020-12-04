@@ -652,6 +652,10 @@ void TCPConnection::sendAck()
         } else if (!state->gotCeIndication && state->dctcpCe) {
             EV_INFO << "CE is not set and DCTCP.CE is true. Set DCTCP.CE to false\n";
             state->dctcpCe = false;
+        } else {
+            const char* dctcpCeStr = state->dctcpCe ? "true" : "false";
+            const char* ceStr = state->gotCeIndication ? "set" : "not set";
+            EV_INFO << "Ignoring CE, no change to DCTCP.CE state... CE is " << ceStr << " and DCTCP.CE is " << dctcpCeStr << "\n";
         }
 
         // Check DCTCP.CE and set ECE accordingly
