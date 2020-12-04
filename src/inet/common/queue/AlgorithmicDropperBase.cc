@@ -82,8 +82,14 @@ void AlgorithmicDropperBase::handleMessage(cMessage *msg)
         } else {
             dropPacket(packet);
         }
-    } else
+    } else {
+        IPv4Datagram *datagram = check_and_cast<IPv4Datagram *>(msg);
+        int CE = datagram->getExplicitCongestionNotification();
+        if (CE != 0) {
+            EV_INFO << "ECN-Capable Transport... queue is not congested\n";
+        }
         sendOut(packet);
+    }
 }
 
 void AlgorithmicDropperBase::dropPacket(cPacket *packet)
