@@ -280,6 +280,11 @@ class INET_API TCPStateVariables : public cObject
     //DCTCP
     bool dctcpEnabled;        // set if this dctcp is enabled in this connection
     bool dctcpCe;             // dctcp state variable (rfc8257, p. 6)
+    double dctcpAlpha;
+    int dctcpWindowEnd;
+    int dctcpBytesAcked;
+    int dctcpBytesMarked;
+    unsigned int dctcpSegAck;
 };
 
 /**

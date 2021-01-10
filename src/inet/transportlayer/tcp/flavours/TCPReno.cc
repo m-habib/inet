@@ -104,7 +104,29 @@ void TCPReno::receivedDataAck(uint32 firstSeqAcked)
     }
     else {
         bool performSsCa = true; //Stands for: "perform slow start and congestion avoidance"
-        if (state && state->ect && state->gotEce) {
+        EV_INFO << "state->dctcpEnabled = " << state->dctcpEnabled << "   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" <<"\n";
+        EV_INFO << "state->dctcpEnabled = " << state->dctcpEnabled << "   !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" <<"\n";
+        //DCTCP
+        if (state && state->ect && state->dctcpEnabled) {
+            EV_INFO << "In sender function !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << "\n";
+            int bytesAcked =  state->dctcpSegAck - state->snd_una;
+            state->dctcpBytesAcked += bytesAcked;
+            if (state->gotEce) {
+                EV_INFO << "Got ece !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << "\n";
+                state->dctcpBytesMarked += bytesAcked;
+            }
+            if (state->dctcpSegAck > state->dctcpWindowEnd) {
+                EV_INFO << "Window end !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << "\n";
+                double M = state->dctcpBytesMarked / state->dctcpBytesAcked;
+                double g = 1/16;
+                state->dctcpAlpha * (1 - g) + g * M;
+                state->dctcpWindowEnd = state->snd_nxt; //nt2kd mn snd_nxt!
+                state->dctcpBytesAcked = 0;
+                state->dctcpBytesMarked = 0;
+                state->snd_cwnd = state->snd_cwnd * (1  - (state->dctcpAlpha / 2));
+            }
+        }
+        if (state && state->ect && state->gotEce && !state->dctcpEnabled) {
             // halve cwnd and reduce ssthresh and do not increase cwnd (rfc-3168, page 18):
             //   If the sender receives an ECN-Echo (ECE) ACK
             // packet (that is, an ACK packet with the ECN-Echo flag set in the TCP
@@ -125,11 +147,14 @@ void TCPReno::receivedDataAck(uint32 firstSeqAcked)
             // single window of data.  In addition, the TCP source should not decrease
             // the slow-start threshold, ssthresh, if it has been decreased
             // within the last round trip time.
+
             if (simTime() - state->eceReactionTime > state->srtt) {
+
                 state->ssthresh = state->snd_cwnd / 2;
                 state->snd_cwnd = std::max(state->snd_cwnd / 2, uint32(1));
                 state->sndCwr = true;
                 performSsCa = false;
+                EV_INFO  <<  "saroshaaaaaaaaaaaaaaaaaaaaaa \n";
                 EV_INFO
                                << "ssthresh = cwnd/2: received ECN-Echo ACK... new ssthresh = "
                                << state->ssthresh << "\n";

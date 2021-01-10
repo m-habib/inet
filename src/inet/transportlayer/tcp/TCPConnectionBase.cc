@@ -130,8 +130,14 @@ TCPStateVariables::TCPStateVariables()
     rexmit = false;
     eceReactionTime = 0;
 
+    //DCTCP
     dctcpCe = false;
     dctcpEnabled = false;
+    dctcpAlpha = 1;
+    dctcpWindowEnd = snd_una;
+    dctcpBytesAcked = 0;
+    dctcpBytesMarked = 0;
+    dctcpSegAck = 0;
 }
 
 std::string TCPStateVariables::str() const

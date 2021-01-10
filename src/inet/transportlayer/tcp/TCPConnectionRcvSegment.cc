@@ -498,6 +498,8 @@ TCPEventCode TCPConnection::processSegment1stThru8th(TCPSegment *tcpseg)
                 state->rcv_nxt = receiveQueue->insertBytesFromSegment(tcpseg);
 
                 if (seqGreater(state->snd_una, old_snd_una)) {
+                    //dctcp
+                    state->dctcpSegAck = tcpseg->getAckNo();
                     // notify
                     tcpAlgorithm->receivedDataAck(old_snd_una);
 
@@ -1265,6 +1267,8 @@ bool TCPConnection::processAckInEstabEtc(TCPSegment *tcpseg)
         // if segment contains data, wait until data has been forwarded to app before sending ACK,
         // otherwise we would use an old ACKNo
         if (tcpseg->getPayloadLength() == 0 && fsm.getState() != TCP_S_SYN_RCVD) {
+            //dctcp
+            state->dctcpSegAck = tcpseg->getAckNo();
             // notify
             tcpAlgorithm->receivedDataAck(old_snd_una);
 
