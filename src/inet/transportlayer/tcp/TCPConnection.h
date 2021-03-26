@@ -280,6 +280,14 @@ class INET_API TCPStateVariables : public cObject
     //DCTCP
     bool dctcpEnabled;        // set if this dctcp is enabled in this connection
     bool dctcpCe;             // dctcp state variable (rfc8257, p. 6)
+    double dctcpAlpha;
+    uint32 dctcpWindowEnd;
+    uint32 dctcpBytesAcked;
+    uint32 dctcpBytesMarked;
+    uint32 dctcpSegAck;
+    uint32 dctcpSndUna;
+    uint32 dctcpWindowCount;
+    uint32 dctcpWindowSize;
 };
 
 /**
@@ -390,6 +398,12 @@ class INET_API TCPConnection : public cObject
     cOutVector *sackedBytesVector = nullptr;    // current number of received sacked bytes
     cOutVector *tcpRcvQueueBytesVector = nullptr;    // current amount of used bytes in tcp receive queue
     cOutVector *tcpRcvQueueDropsVector = nullptr;    // number of drops in tcp receive queue
+
+    cOutVector *endToEndDelayVector = nullptr;    // E2E delay vector
+    cOutVector *endToEndDelayAvgVector = nullptr;    // E2E delay avg vector
+    simtime_t sumDelays  = 0;    // sum delays
+    simtime_t avgE2EDelay  = 0;    // sum delays
+    int numPackets = 0;    // num packets
 
   protected:
     /** @name FSM transitions: analysing events and executing state transitions */

@@ -132,6 +132,13 @@ TCPStateVariables::TCPStateVariables()
 
     dctcpCe = false;
     dctcpEnabled = false;
+    dctcpAlpha = 1;
+    dctcpWindowEnd = snd_una;
+    dctcpBytesAcked = 0;
+    dctcpBytesMarked = 0;
+    dctcpSegAck = 0;
+    dctcpSndUna = 0;
+    dctcpWindowCount = 0;
 }
 
 std::string TCPStateVariables::str() const
@@ -238,6 +245,11 @@ TCPConnection::TCPConnection(TCP *_mod, int _appGateIndex, int _connId)
         tcpRcvQueueBytesVector = new cOutVector("tcpRcvQueueBytes");
         tcpRcvQueueDropsVector = new cOutVector("tcpRcvQueueDrops");
     }
+    endToEndDelayVector = new cOutVector("e2eDelayVector");
+    endToEndDelayAvgVector = new cOutVector("e2eDelayAvgVector");
+    sumDelays  = 0;    // sum delays
+    avgE2EDelay  = 0;    // sum delays
+    numPackets = 0;    // num packets
 }
 
 TCPConnection::~TCPConnection()

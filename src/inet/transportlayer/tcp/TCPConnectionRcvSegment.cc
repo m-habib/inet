@@ -200,7 +200,12 @@ TCPEventCode TCPConnection::processSegment1stThru8th(TCPSegment *tcpseg)
         EV_INFO << "Received CWR... Leaving ecnEcho State\n";
         state->ecnEchoState = false;
     }
-
+    simtime_t currDelay = simTime() - tcpseg->getCreationTime();
+    sumDelays += currDelay;
+    numPackets++;
+    simtime_t avg = sumDelays/numPackets;
+    endToEndDelayAvgVector->record(avg);
+    endToEndDelayVector->record(currDelay);
     //
     // RFC 793: second check the RST bit,
     //
@@ -498,6 +503,9 @@ TCPEventCode TCPConnection::processSegment1stThru8th(TCPSegment *tcpseg)
                 state->rcv_nxt = receiveQueue->insertBytesFromSegment(tcpseg);
 
                 if (seqGreater(state->snd_una, old_snd_una)) {
+                    //dctcp
+                    //state->dctcpSegAck = tcpseg->getAckNo();
+                    EV_INFO << "tcpseg->getAckNo()="<< tcpseg->getAckNo() << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << "\n";
                     // notify
                     tcpAlgorithm->receivedDataAck(old_snd_una);
 
@@ -1154,6 +1162,9 @@ bool TCPConnection::processAckInEstabEtc(TCPSegment *tcpseg)
             state->gotEce = true;
         }
     }
+    //dctcp
+    state->dctcpSegAck = tcpseg->getAckNo();
+    state->dctcpSndUna = state->snd_una;
 
     //
     //"
@@ -1222,8 +1233,11 @@ bool TCPConnection::processAckInEstabEtc(TCPSegment *tcpseg)
     }
     else if (seqLE(tcpseg->getAckNo(), state->snd_max)) {
         // ack in window.
+
         uint32 old_snd_una = state->snd_una;
+        EV_INFO << "old_snd_una" <<  old_snd_una <<"!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
         state->snd_una = tcpseg->getAckNo();
+        EV_INFO << "state->snd_una" <<  state->snd_una <<"!!!!!!!!!!!!!!!!!!!!!!!!!!!\n";
 
         if (unackedVector)
             unackedVector->record(state->snd_max - state->snd_una);
@@ -1264,7 +1278,11 @@ bool TCPConnection::processAckInEstabEtc(TCPSegment *tcpseg)
 
         // if segment contains data, wait until data has been forwarded to app before sending ACK,
         // otherwise we would use an old ACKNo
+        EV_INFO << "tcpseg->getAckNo()="<< tcpseg->getAckNo() << "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!" << "\n";
+
         if (tcpseg->getPayloadLength() == 0 && fsm.getState() != TCP_S_SYN_RCVD) {
+            //dctcp
+            //state->dctcpSegAck = tcpseg->getAckNo();
             // notify
             tcpAlgorithm->receivedDataAck(old_snd_una);
 

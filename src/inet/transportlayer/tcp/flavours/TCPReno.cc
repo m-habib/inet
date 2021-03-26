@@ -104,6 +104,16 @@ void TCPReno::receivedDataAck(uint32 firstSeqAcked)
     }
     else {
         bool performSsCa = true; //Stands for: "perform slow start and congestion avoidance"
+        //DCTCP
+        if (state && state->ect && state->dctcpEnabled) {
+            //1:
+            uint32 bytesAcked =  state->dctcpSegAck - state->dctcpSndUna;
+
+            //2:
+//            state->dctcpBytesAcked += bytesAcked;
+            state->dctcpBytesAcked += 1;
+        }
+
         if (state && state->ect && state->gotEce) {
             // halve cwnd and reduce ssthresh and do not increase cwnd (rfc-3168, page 18):
             //   If the sender receives an ECN-Echo (ECE) ACK
@@ -126,8 +136,44 @@ void TCPReno::receivedDataAck(uint32 firstSeqAcked)
             // the slow-start threshold, ssthresh, if it has been decreased
             // within the last round trip time.
             if (simTime() - state->eceReactionTime > state->srtt) {
-                state->ssthresh = state->snd_cwnd / 2;
-                state->snd_cwnd = std::max(state->snd_cwnd / 2, uint32(1));
+
+                if (state->dctcpEnabled) {
+                    EV_INFO << "dctcp on !!!!!!!\n";
+                    state->dctcpBytesMarked += 1;
+//                  state->dctcpWindowCount += bytesAcked;
+//                    state->dctcpBytesMarked += bytesacked;
+
+                    //Originally 5-9 should happen only if (state->dctcpSegAck > state->dctcpWindowEnd)
+                    //5:
+                    double M = (double)state->dctcpBytesMarked / (double)state->dctcpBytesAcked;
+                    double g = 1.0/16.0;
+
+                    //6:
+                    state->dctcpAlpha = state->dctcpAlpha * (1 - g) + g * M;
+
+                    //7: this doesn't have an effect now...
+                    state->dctcpWindowEnd = state->snd_nxt;
+
+                    EV_INFO << "M g state->dctcpBytesMarked state->dctcpBytesAcked state->dctcpAlpha = " << M << " " << g
+                            << " " << state->dctcpBytesMarked << " " << state->dctcpBytesAcked << " " <<  state->dctcpAlpha << "!!!!!!!!!!!!\n";
+
+                    //8:
+                    state->dctcpBytesAcked = 0;
+                    state->dctcpBytesMarked = 0;
+                    //if(M != 0){ M is always > 0 (because ece = true
+                        //state->dctcpWindowSize = state->dctcpWindowSize * (1  - (state->dctcpAlpha / 2));
+                        //state->snd_cwnd = std::max(state->snd_cwnd, uint32(10000));
+                        state->snd_cwnd = state->snd_cwnd * (1  - (state->dctcpAlpha / 2));
+                        state->snd_cwnd = std::max(state->snd_cwnd, uint32(1));
+                        state->ssthresh = state->snd_cwnd / 2;
+                        state->ssthresh = std::max(state->ssthresh, uint32(1));
+                    //}
+                    EV_INFO << "state->snd_cwnd   state->ssthresh = " << state->snd_cwnd << " " <<  state->ssthresh << "!!!!!!!!!!!!\n";
+                }
+                else { //ecn on dctcp off
+                    state->ssthresh = state->snd_cwnd / 2;
+                    state->snd_cwnd = std::max(state->snd_cwnd / 2, uint32(1));
+                }
                 state->sndCwr = true;
                 performSsCa = false;
                 EV_INFO
